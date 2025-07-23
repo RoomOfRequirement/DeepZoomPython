@@ -23,6 +23,9 @@ import sys, os
 sys.path.insert(0, os.path.abspath(Path(__file__).parent.parent.absolute()))
 from dz_py.deepzoom import DeepZoomGenerator
 
+from openslide import ImageSlide
+from openslide.deepzoom import DeepZoomGenerator as DeepZoomGeneratorOSD
+
 
 SRGB_PROFILE_BYTES = zlib.decompress(
     base64.b64decode(
@@ -49,6 +52,12 @@ Transform: TypeAlias = Callable[[Image.Image], None]
 
 
 class AnnotatedDeepZoomGenerator(DeepZoomGenerator):
+    filename: str
+    mpp: float
+    transform: Transform
+
+
+class AnnotatedDeepZoomGeneratorOSD(DeepZoomGeneratorOSD):
     filename: str
     mpp: float
     transform: Transform
@@ -178,7 +187,7 @@ def create_app(
     templates = Jinja2Templates(directory=Path(__file__).parent.joinpath("./templates").resolve())
     settings = Settings(config=dict(
         SLIDE_DIR='.',
-        SLIDE_CACHE_SIZE=10,
+        SLIDE_CACHE_SIZE=30,
         DEEPZOOM_TILE_SIZE=254,
         DEEPZOOM_OVERLAP=1,
         DEEPZOOM_LIMIT_BOUNDS=True,
@@ -233,7 +242,7 @@ def create_app(
             slide = app.cache.get(path)
         except Exception:
             slide = get_slide(PurePath(path))
-        return Response(content=slide.get_dzi(), media_type='application/xml')
+        return Response(content=slide.get_dzi("jpeg"), media_type='application/xml')
     
 
     @app.get('/{path:path}_files/{level:int}/{col:int}_{row:int}.{format}')
@@ -247,7 +256,7 @@ def create_app(
             # Not supported by DeepZoomGenerator
             raise HTTPException(status_code=404)
         try:
-            tile = slide.get_dzi_tile(level, (col, row))
+            tile = slide.get_tile(level, (col, row))
         except ValueError:
             # Invalid level or coordinates
             raise HTTPException(status_code=404)
@@ -268,22 +277,22 @@ def create_app(
         slide = get_slide(PurePath(path))
         slide_url = app.url_path_for('dzi', path=path)
         # TODO: associated images
-        # for name, image in slide._osr.associated_images.items():
-        #     image_path = f'{path}_{name}'
-        #     app.cache._cache[image_path] = AnnotatedDeepZoomGenerator(image_path, **opts)
-        #     app.cache._cache[image_path].filename = name
-        #     app.cache._cache[image_path].mpp = slide.mpp
-        #     app.cache._cache[image_path].transform = slide.transform
-        # associated_urls = {
-        #     # treat associated images as slide files
-        #     name: app.url_path_for('dzi', path=f'{path}_{name}') for name in slide._osr.associated_images
-        # }
+        for name, image in slide.associated_images.items():
+            image_path = f'{path}_{name}'
+            app.cache._cache[image_path] = AnnotatedDeepZoomGeneratorOSD(ImageSlide(image), **opts)
+            app.cache._cache[image_path].filename = name
+            app.cache._cache[image_path].mpp = slide.mpp
+            app.cache._cache[image_path].transform = slide.transform
+        associated_urls = {
+            # treat associated images as slide files
+            name: app.url_path_for('dzi', path=f'{path}_{name}') for name in slide.associated_images
+        }
         return templates.TemplateResponse(
             'slide-multipane.html',
             {
                 'request': request,
                 'slide_url': slide_url,
-                'associated': None, #associated_urls,
+                'associated': associated_urls,
                 'properties': slide._metadata,
                 'slide_mpp': slide.mpp
             },

@@ -6,6 +6,7 @@ import math
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
 from typing import Union
+from collections.abc import Mapping
 from .util import lazyproperty
 
 class DeepZoomGenerator:
@@ -59,9 +60,18 @@ class DeepZoomGenerator:
         for profile in profiles:
             if profile:
                 return profile
+            
+
+    @lazyproperty
+    def associated_images(self) -> Mapping[str, Image.Image]:
+        associated_images_list = self._tile_source.getAssociatedImagesList()
+        if len(associated_images_list) == 0:
+            return {}
+        else:
+            return {name: self._tile_source._getAssociatedImage(name) for name in associated_images_list}
 
 
-    def get_tile(self, z: int, xy: tuple[int, int]) -> Image.Image:
+    def get_tile_at_z(self, z: int, xy: tuple[int, int]) -> Image.Image:
         """Return an RGB PIL.Image for a tile.
 
         z:     the pyramidal level.
@@ -70,7 +80,7 @@ class DeepZoomGenerator:
         return self._tile_source.getTile(xy[0], xy[1], z, True).convert("RGB")
     
 
-    def get_dzi_tile(self, level: int, address: tuple[int, int]) -> Image.Image:
+    def get_tile(self, level: int, address: tuple[int, int]) -> Image.Image:
         """Return an RGB PIL.Image for a tile.
 
         level:     the Deep Zoom level.
@@ -110,8 +120,9 @@ class DeepZoomGenerator:
         return regionData.convert('RGB')
 
 
-    def get_dzi(self) -> str:
+    def get_dzi(self, format: str) -> str:
         """Return a string containing the XML metadata for the .dzi file."""
+        # pylint: disable=unused-variable
         image = Element(
             "Image",
             TileSize=str(self._tile_size),
