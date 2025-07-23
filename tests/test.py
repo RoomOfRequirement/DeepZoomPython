@@ -14,7 +14,7 @@ import openslide
 dz = DeepZoomGenerator(sys.argv[1])
 print(dz)
 
-dzi = dz.get_dzi("jpg")
+dzi = dz.get_dzi()
 print(dzi)
 
 print(dz.level_count, dz.dzi_level_count)

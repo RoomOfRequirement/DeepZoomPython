@@ -1,22 +1,26 @@
 import large_image
 import pathlib
-from PIL import Image
+from PIL import Image, ImageCms
 from io import BytesIO
 import math
 from xml.etree.ElementTree import Element, ElementTree, SubElement
 
-from typing import List, Tuple, Union, Optional
+from typing import Union
 from .util import lazyproperty
 
 class DeepZoomGenerator:
-    def __init__(self, path: Union[str, pathlib.Path], tile_size: int = 254, overlap: int = 1):
+    def __init__(self, path: Union[str, pathlib.Path], tile_size: int = 254, overlap: int = 1, limit_bounds = True):
         self._path = path
         self._tile_size = tile_size
         self._tile_overlap = overlap
+        self._limit_bounds = limit_bounds
     @lazyproperty
     def _tile_source(self) -> large_image.tilesource.TileSource:
         # https://github.com/girder/large_image/blob/master/large_image/tilesource/base.py#L37
-        return large_image.getTileSource(self._path, edge='crop') # crop edge means limit bound to non-empty region
+        if self._limit_bounds:
+            return large_image.getTileSource(self._path, edge='crop') # crop edge means limit bound to non-empty region
+        else:
+            return large_image.getTileSource(self._path)
     
     @lazyproperty
     def _metadata(self) -> dict:
@@ -35,6 +39,26 @@ class DeepZoomGenerator:
     @lazyproperty
     def dzi_level_count(self) -> int:
         return int(math.ceil(math.log(max(self._metadata['sizeX'], self._metadata['sizeY'])) / math.log(2)))
+    
+
+    @lazyproperty
+    def get_icc_profile(self) -> ImageCms.ImageCmsProfile | None:
+        """
+        Get a list of all ICC profiles that are available for the source, or
+        get a specific profile.
+
+        :param idx: a 0-based index into the profiles to get one profile, or
+            None to get a list of all profiles.
+        :returns: either one or a list of PIL.ImageCms.CmsProfile objects, or
+            None if no profiles are available.  If a list, entries in the list
+            may be None.
+        """
+        profiles = self._tile_source.getICCProfiles()
+        if profiles is None:
+            return None
+        for profile in profiles:
+            if profile:
+                return profile
 
 
     def get_tile(self, z: int, xy: tuple[int, int]) -> Image.Image:
@@ -54,7 +78,6 @@ class DeepZoomGenerator:
                    tuple."""
         # https://github.com/girder/large_image/blob/master/girder/girder_large_image/rest/tiles.py#L645
         maxlevel = int(math.ceil(math.log(max(self._metadata['sizeX'], self._metadata['sizeY'])) / math.log(2)))
-        print(level, maxlevel)
         if level < 1 or level > maxlevel:
             raise 'level must be between 1 and the image scale'
         lfactor = 2 ** (maxlevel - level)
@@ -87,15 +110,13 @@ class DeepZoomGenerator:
         return regionData.convert('RGB')
 
 
-    def get_dzi(self, format: str) -> str:
-        """Return a string containing the XML metadata for the .dzi file.
-
-        format:    the format of the individual tiles ('png' or 'jpeg')"""
+    def get_dzi(self) -> str:
+        """Return a string containing the XML metadata for the .dzi file."""
         image = Element(
             "Image",
             TileSize=str(self._tile_size),
             Overlap=str(self._tile_overlap),
-            Format=format,
+            Format='jpeg',
             xmlns="http://schemas.microsoft.com/deepzoom/2008",
         )
         SubElement(image, "Size", Width=str(self._metadata['sizeX']), Height=str(self._metadata['sizeY']))
@@ -103,3 +124,8 @@ class DeepZoomGenerator:
         buf = BytesIO()
         tree.write(buf, encoding="UTF-8")
         return buf.getvalue().decode("UTF-8")
+            
+
+    @classmethod
+    def canRead(cls, path: Union[str, pathlib.Path]) -> bool:
+        return large_image.tilesource.canRead(path)
