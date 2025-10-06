@@ -7,10 +7,6 @@
   "files.trimTrailingWhitespace": true,
   "files.trimFinalNewlines": true,
   "files.insertFinalNewline": true,
-  // https://github.com/microsoft/vscode-python/wiki/Migration-to-Python-Tools-Extensions#linting-and-formatting-settings-deprecation
-  "python.analysis.extraPaths": [
-    "./app"
-  ],
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter",
     "editor.formatOnSave": true,
