@@ -1,5 +1,5 @@
-import sys
 import json
+import sys
 
 from cucim import CuImage
 
@@ -10,7 +10,9 @@ print(img.device)  # A device type.
 print(img.ndim)  # The number of dimensions.
 print(img.dims)  # A string containing a list of dimensions being requested.
 print(img.shape)  # A tuple of dimension sizes (in the order of `dims`).
-print(img.size("XYC"))  # Returns size as a tuple for the given dimension order.
+print(
+    img.size("XYC")
+)  # Returns size as a tuple for the given dimension order.
 print(img.dtype)  # The data type of the image.
 print(img.channel_names)  # A channel name list.
 print(img.spacing())  # Returns physical size in tuple.
@@ -39,7 +41,3 @@ print(img.raw_metadata)
 # https://github.com/Bayer-Group/tiffslide/blob/main/tiffslide/tests/test_benchmark.py
 # and in its [issue 72](https://github.com/Bayer-Group/tiffslide/issues/72),
 # it claims a out-performing than openslide
-
-# TODO
-# wrap a new deepzoom generator backend with cucim
-# reference: https://github.com/slideflow/slideflow/blob/master/slideflow/slide/backends/cucim.py
