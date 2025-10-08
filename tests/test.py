@@ -19,7 +19,7 @@ print(dz)
 dzi = dz.get_dzi()
 print(dzi)
 
-print(dz.level_count, dz.dzi_level_count)
+print(dz.level_count, dz.dzi_level_count, dz.mpp)
 
 tile = dz.get_tile((dz.dzi_level_count - 1) // 2, (0, 0))
 # tile = dz.get_tile((dz.level_count - 1) // 2, (0, 0))
@@ -51,7 +51,7 @@ print(dz_cu)
 
 dzi2 = dz_cu.get_dzi()
 print(dzi2)
-print(dz_cu.level_count, dz_cu.dzi_level_count)
+print(dz_cu.level_count, dz_cu.dzi_level_count, dz_cu.mpp)
 tile_cu = dz_cu.get_tile((dz_cu.dzi_level_count - 1) // 2, (0, 0))
 buffered_cu = BytesIO()
 tile_cu.save(buffered_cu, format="JPEG")

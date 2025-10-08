@@ -91,6 +91,18 @@ class DeepZoomGenerator:
                 for name in associated_images_list
             }
 
+    @lazyproperty
+    def mpp(self) -> float | None:
+        mm_x = self._metadata.get("mm_x")
+        mm_y = self._metadata.get("mm_y")
+        if mm_x and mm_y:
+            return (mm_x + mm_y) * 500.0
+        if mm_x:
+            return mm_x * 1000.0
+        if mm_y:
+            return mm_y * 1000.0
+        return None
+
     def get_tile_at_z(self, z: int, xy: tuple[int, int]) -> Image.Image:
         """Return an RGB PIL.Image for a tile.
 

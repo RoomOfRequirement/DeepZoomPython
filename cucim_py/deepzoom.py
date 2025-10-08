@@ -14,6 +14,7 @@ from skimage.util import img_as_float32
 from dz_py.util import lazyproperty
 
 
+# reference: https://github.com/slideflow/slideflow/blob/master/slideflow/slide/backends/cucim.py
 class DeepZoomGenerator:
     def __init__(
         self,
@@ -101,6 +102,43 @@ class DeepZoomGenerator:
             )
             for name in self._reader.associated_images
         }
+
+    @lazyproperty
+    def mpp(self) -> float | None:
+        _mpp = None
+        # print(self._reader.metadata)
+        for prop_key in self._reader.metadata:
+            if _mpp is not None:
+                break
+            if "MPP" in self._reader.metadata[prop_key]:
+                _mpp = self._reader.metadata[prop_key]["MPP"]
+            elif "DICOM_PIXEL_SPACING" in self._reader.metadata[prop_key]:
+                ps = self._reader.metadata[prop_key]["DICOM_PIXEL_SPACING"][0]
+                _mpp = ps * 1000  # Convert from millimeters -> microns
+            elif "spacing" in self._reader.metadata[prop_key]:
+                ps = self._reader.metadata[prop_key]["spacing"]
+                if isinstance(ps, (list, tuple)):
+                    ps = ps[0]
+                if "spacing_units" in self._reader.metadata[prop_key]:
+                    spacing_unit = self._reader.metadata[prop_key][
+                        "spacing_units"
+                    ]
+                    if isinstance(spacing_unit, (list, tuple)):
+                        spacing_unit = spacing_unit[0]
+                    if spacing_unit in ("mm", "millimeters", "millimeter"):
+                        _mpp = ps * 1000
+                    elif spacing_unit in ("cm", "centimeters", "centimeter"):
+                        _mpp = ps * 10000
+                    elif spacing_unit in (
+                        "um",
+                        "microns",
+                        "micrometers",
+                        "micrometer",
+                    ):
+                        _mpp = ps
+                    else:
+                        continue
+        return _mpp
 
     def best_level_for_downsample(
         self,
