@@ -247,6 +247,7 @@ def create_app(
             slide.filename = path.name
             return slide
         except Exception as e:
+            print(e)
             raise HTTPException(status_code=404) from e
 
     # Set up routes

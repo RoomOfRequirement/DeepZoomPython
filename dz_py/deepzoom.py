@@ -89,10 +89,11 @@ class DeepZoomGenerator:
                 # pylint: disable=protected-access
                 name: self._tile_source._getAssociatedImage(name)
                 for name in associated_images_list
+                if self._tile_source._getAssociatedImage(name)
             }
 
     @lazyproperty
-    def mpp(self) -> float | None:
+    def _mpp(self) -> float | None:
         mm_x = self._metadata.get("mm_x")
         mm_y = self._metadata.get("mm_y")
         if mm_x and mm_y:
